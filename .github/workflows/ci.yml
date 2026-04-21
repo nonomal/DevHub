@@ -8,24 +8,61 @@ jobs:
   build-deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           registry-url: 'https://registry.npmjs.org'
+          
+      - name: Create Tag
+        id: create_tag
+        uses: jaywcjlove/create-tag-action@main
+        with:
+          test: '[R|r]elease[d]\s+[v|V]\d(\.\d+){0,2}'
+
+      - name: Create Released Tag
+        uses: jaywcjlove/create-tag-action@main
+        with:
+          version: ${{ steps.create_tag.outputs.version }}
+          release: true
+          body: |
+            <a target="_blank" href="https://jaywcjlove.github.io/maslink/?id=6476452351" title="DevHub for macOS">
+              <img alt="DevHub AppStore" src="https://jaywcjlove.github.io/sb/download/macos.svg" height="51">
+            </a>
+
+      - name: Get latest tag
+        id: get_latest_tag
+        run: echo "LATEST_TAG=$(git describe --tags $(git rev-list --tags --max-count=1))" >> $GITHUB_ENV
+
 
       - name: Create idoc config.
         run: |
           cat > idoc.yml << EOF
-          site: "DevHub"
+          site: "DevHub {{version:${{ steps.create_tag.outputs.version }}}}"
           description: A feature-rich offline application, is meticulously crafted to support developers in their daily tasks while ensuring the utmost security of their data
           keywords: DevHub,Offline app,Developer,tools,Advanced debugging,Testing,utilities,Feature-rich,Coding,Toolkit
           favicon: assets/logo.png
           logo: ./assets/logo.png
           openSource: https://github.com/jaywcjlove/DevHub
+          homepage: https://wangchujiang.com/DevHub/
           tocs: false
           element: 
             wrapper: style=max-width:720px;
+          meta:
+            - <meta name="author" content="Kenny Wong">
+            - <meta property="og:site_name" content="<%= site %>">
+            - <meta property="og:url" content="<%=homepage%><%=RESOLVE_PATH%>">
+            - <meta property="og:image" content="<%=homepage%>assets/logo.png">
+            - <meta property="og:type" content="application">
+            - <meta property="og:title" content="<%= site %>">
+            - <meta property="og:description" content="<%= description%>">
+            - <meta property="twitter:image:src" content="<%=homepage%>assets/screenshots-1.png">
+            - <meta property="twitter:site" content="@jaywcjlove">
+            - <meta property="twitter:creator" content="jaywcjlove">
+            - <meta property="twitter:card" content="summary_large_image">
+            - <meta property="twitter:title" content="<%= site %> - <%= description%>">
+            - <meta property="twitter:description" content="<%= description%>">
+            - <meta name="apple-itunes-app" content="app-id=6476452351">
           menus:
             Home: index.html
             Apps: 
@@ -34,8 +71,21 @@ jobs:
             About: 
               url: https://wangchujiang.com/#/about
               target: __blank
+          sideEffectFiles:
+            - README.zh.md
+            - README.ja.md
+            - CHANGELOG.md
+            - CHANGELOG.zh.md
+            - feedback.md
+            - feedback.zh.md
+            - feedback.ja.md
+            - terms-of-service.md
+            - terms-of-service.zh.md
+            - privacy-policy.md
+            - privacy-policy.zh.md
           footer: |
-            <a href="https://wangchujiang.com/#/app" target="_blank">App</a> • 
+            <a href="./terms-of-service.html" target="_blank">Terms of Service</a> • 
+            <a href="./privacy-policy.html" target="_blank">Privacy Policy</a> • 
             <a href="https://wangchujiang.com/#/projects" target="_blank">Projects</a> • 
             <a href="https://wangchujiang.com/#/sponsor" target="_blank">Sponsor</a> • 
             <a href="https://wangchujiang.com/#/app" target="_blank">More Apps</a><br /><br />
@@ -46,7 +96,7 @@ jobs:
       - run: idoc
 
       - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
           commit_message: ${{ github.event.head_commit.message }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
